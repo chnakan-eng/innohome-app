@@ -10,3 +10,7 @@ libasound2
 libcups2
 libatk1.0-0
 libdrm2
+libxdamage1
+libxfixes3
+libxshmfence1
+libxcb-dri3-0
