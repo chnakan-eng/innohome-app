@@ -7,7 +7,7 @@ import urllib.parse
 import re
 import os
 
-# --- 🚀 สั่งให้ Cloud ติดตั้งเบราว์เซอร์ (ทำแค่ครั้งเดียวตอนเปิดเซิร์ฟ) ---
+# --- 🚀 สั่งให้ Cloud ติดตั้งเบราว์เซอร์ ---
 @st.cache_resource
 def install_playwright():
     os.system("playwright install chromium")
@@ -33,7 +33,6 @@ def local_css():
         </style>
     """, unsafe_allow_html=True)
 
-# --- ⚙️ 3. LOGIC ระบบขุดข้อมูลตัวจริง ---
 def clean_and_calculate(price_str, size_str):
     try:
         price_digits = re.sub(r'[^\d]', '', price_str)
@@ -128,12 +127,22 @@ async def run_dual_engine(condo_name, max_pages):
     combined = []
     seen = set()
     async with async_playwright() as p:
-        # 🔥 ไฮไลท์การแก้ไข: ให้คลาวด์รันแบบไม่มีหน้าจอ และตั้งค่าสำหรับ Linux
+        # 🔥 ระบบพรางตัว (ตั้งค่าให้เหมือนคนเล่นเน็ตปกติ)
         browser = await p.chromium.launch(
             headless=True, 
-            args=["--disable-blink-features=AutomationControlled", "--no-sandbox", "--disable-dev-shm-usage"]
+            args=[
+                "--disable-blink-features=AutomationControlled", 
+                "--no-sandbox", 
+                "--disable-dev-shm-usage",
+                "--disable-web-security"
+            ]
         )
-        context = await browser.new_context(viewport={'width': 1366, 'height': 768})
+        context = await browser.new_context(
+            viewport={'width': 1366, 'height': 768},
+            user_agent='Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            locale='th-TH',
+            timezone_id='Asia/Bangkok'
+        )
         p_dd = await context.new_page(); p_lv = await context.new_page()
         res_dd, res_lv = await asyncio.gather(scrape_ddproperty(p_dd, condo_name, max_pages), scrape_livinginsider(p_lv, condo_name, max_pages))
         await browser.close()
