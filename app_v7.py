@@ -5,6 +5,13 @@ from playwright.async_api import async_playwright
 from bs4 import BeautifulSoup
 import urllib.parse
 import re
+import os
+
+# --- 🚀 สั่งให้ Cloud ติดตั้งเบราว์เซอร์ (ทำแค่ครั้งเดียวตอนเปิดเซิร์ฟ) ---
+@st.cache_resource
+def install_playwright():
+    os.system("playwright install chromium")
+install_playwright()
 
 # --- 🔐 1. ข้อมูลล็อคอินภายในองค์กร (Internal Only) ---
 INTERNAL_USERS = {
@@ -121,7 +128,11 @@ async def run_dual_engine(condo_name, max_pages):
     combined = []
     seen = set()
     async with async_playwright() as p:
-        browser = await p.chromium.launch(headless=False, channel="chrome", args=["--disable-blink-features=AutomationControlled"])
+        # 🔥 ไฮไลท์การแก้ไข: ให้คลาวด์รันแบบไม่มีหน้าจอ และตั้งค่าสำหรับ Linux
+        browser = await p.chromium.launch(
+            headless=True, 
+            args=["--disable-blink-features=AutomationControlled", "--no-sandbox", "--disable-dev-shm-usage"]
+        )
         context = await browser.new_context(viewport={'width': 1366, 'height': 768})
         p_dd = await context.new_page(); p_lv = await context.new_page()
         res_dd, res_lv = await asyncio.gather(scrape_ddproperty(p_dd, condo_name, max_pages), scrape_livinginsider(p_lv, condo_name, max_pages))
@@ -135,13 +146,11 @@ async def run_dual_engine(condo_name, max_pages):
 st.set_page_config(page_title="Innohome - Internal System", layout="wide")
 local_css()
 
-# เช็คสถานะ Login
 if 'logged_in' not in st.session_state:
     st.session_state['logged_in'] = False
 if 'username' not in st.session_state:
     st.session_state['username'] = ""
 
-# 🔒 หน้าจอ LOGIN
 if not st.session_state['logged_in']:
     st.markdown('<div class="login-box">', unsafe_allow_html=True)
     st.markdown('<div class="login-title">Innohome Pro</div>', unsafe_allow_html=True)
@@ -159,9 +168,7 @@ if not st.session_state['logged_in']:
             st.error("❌ Username หรือ Password ไม่ถูกต้องครับ!")
     st.markdown('</div>', unsafe_allow_html=True)
 
-# 🔓 หน้าจอระบบหลัก (ถ้าล็อคอินผ่านแล้ว)
 else:
-    # ปุ่ม Logout มุมขวาบน
     col_logo, col_logout = st.columns([8, 1])
     with col_logout:
         if st.button("🚪 Logout"):
@@ -177,7 +184,7 @@ else:
     start_btn = col_b.button("ค้นหา")
 
     if start_btn and condo_name:
-        with st.spinner("🤖 บอทกำลังดึงข้อมูลจาก DDproperty และ Livinginsider..."):
+        with st.spinner("🤖 บอทกำลังดึงข้อมูลจาก DDproperty และ Livinginsider (รอประมาณ 1-2 นาที)..."):
             results = asyncio.run(run_dual_engine(condo_name, max_p))
             if results:
                 df = pd.DataFrame(results)
